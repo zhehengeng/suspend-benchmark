@@ -62,7 +62,7 @@ async fn main() {
         }));
     }
 
-    let mut start_times = Vec::new();
+    let mut start_times = Vec::with_capacity(100);
     sleep(Duration::from_secs(5)).await;
     for abort_handle in abort_handles {
         abort_handle.abort();

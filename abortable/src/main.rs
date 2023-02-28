@@ -1,3 +1,4 @@
+use std::alloc::System;
 use std::time::Duration;
 use std::time::SystemTime;
 use tokio::time::sleep;
@@ -20,9 +21,10 @@ async fn busy_loop(p_sleep: f64, sleeptime1: u64,
     }
 }
 
-fn calculate_duration(t1: SystemTime, t2: Vec<SystemTime>) -> Vec<Duration> {
-    t2.iter()
-        .map(|&x| x.duration_since(t1.clone()).unwrap_or(Duration::from_micros(0))).collect()
+fn calculate_duration(t1: Vec<SystemTime>, t2: Vec<SystemTime>) -> Vec<Duration> {
+    t1.iter()
+        .zip(t2.iter())
+        .map(|(start, end)| end.duration_since(start.clone()).unwrap()).collect()
 }
 
 fn max_duration(durations: Vec<Duration>) -> Duration {
@@ -60,14 +62,12 @@ async fn main() {
         }));
     }
 
-    let time = tokio::spawn(async move {
-        sleep(Duration::from_secs(5)).await;
-        for abort_handle in abort_handles {
-            abort_handle.abort();
-        }
-        SystemTime::now()
-    });
-    let t1 = time.await.unwrap();
+    let mut start_times = Vec::new();
+    sleep(Duration::from_secs(5)).await;
+    for abort_handle in abort_handles {
+        abort_handle.abort();
+        start_times.push(SystemTime::now());
+    }
     
     let mut times = Vec::with_capacity(100);
     for task in tasks {
@@ -78,7 +78,7 @@ async fn main() {
         }
     }
     
-    let durations = calculate_duration(t1, times);
+    let durations = calculate_duration(start_times, times);
     dbg!("{}", min_duration(durations.clone()));
     dbg!("{}", max_duration(durations.clone()));
     dbg!("{}", average_durations(durations));
